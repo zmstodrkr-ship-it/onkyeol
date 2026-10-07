@@ -103,7 +103,7 @@
       opened: [], focus: "", ready: false, rotation: 0, spinning: false, result: null, modal: false, notice: "",
       game: "idle", brain: null, early: false, worry: "", report: "", backtest: "",
       zodiac: 0, zodiacOn: false, sign: 0, signOn: false, signRead: false, cal: "solar", birth: "", time: "",
-      ly: "", lm: "1", ld: "1", leap: false, blood: "", mbti: "", iqStep: 0, iqOk: 0, iqDone: false,
+      ly: "", lm: "1", ld: "1", leap: false, blood: "", mbti: "", mbtiMode: "pick", mbtiQ: 0, mbtiAnswers: [], iqStep: 0, iqOk: 0, iqDone: false,
       saju: false, hour: null, match: false, partner: "", taekilOpen: false, taekil: "", feng: false, dir: "",
       days: [], shareCount: 0, tucked: false,
     });
@@ -144,6 +144,46 @@
     }
     function band(score) { return score >= 800 ? "실행 가능" : score >= 600 ? "한 가지만" : "자중"; }
     function guide(score) { return score >= 800 ? "오늘은 실행해도 됩니다." : score >= 600 ? "오늘은 한 가지만 진행하세요." : "자중입니다. 중요한 결정은 미루세요."; }
+    const MBTI_QUESTIONS = [
+      ["EI", "쉬는 날 기운이 나는 쪽은?", "여러 사람을 만난다", "E", "혼자 또는 한두 명과 있는다", "I"],
+      ["EI", "모임이 끝난 뒤 보통은?", "이야기가 더 남아 있다", "E", "조용히 쉬어야 풀린다", "I"],
+      ["EI", "생각을 정리할 때는?", "말하다 보면 정리된다", "E", "혼자 적어 봐야 정리된다", "I"],
+      ["EI", "처음 보는 모임에서 나는?", "먼저 말을 건다", "E", "분위기를 보고 들어간다", "I"],
+      ["EI", "하루를 잘 보냈다는 느낌은?", "사람을 만난 날", "E", "방해 없이 파고든 날", "I"],
+      ["SN", "설명을 들을 때 먼저 잡는 것은?", "구체적인 사실과 예시", "S", "전체의 의미와 가능성", "N"],
+      ["SN", "일을 시작할 때 편한 것은?", "순서와 이미 된 예시", "S", "그림과 앞으로의 가능성", "N"],
+      ["SN", "경험이 지나고 남는 것은?", "그때 실제로 본 것", "S", "그 일이 뜻하던 것", "N"],
+      ["SN", "이야기를 듣고 먼저 의심하는 것은?", "세부 내용이 맞는지", "S", "숨은 패턴이 있는지", "N"],
+      ["SN", "더 믿을 만한 정보는?", "지금 확인된 숫자", "S", "앞으로의 흐름", "N"],
+      ["TF", "선택이 갈릴 때 먼저 보는 것은?", "기준과 결과", "T", "그 일을 겪는 사람의 마음", "F"],
+      ["TF", "피드백을 줄 때 먼저인 것은?", "정확한 지적", "T", "상대가 받을 수 있는지", "F"],
+      ["TF", "공정하다고 느끼는 것은?", "같은 규칙을 같이 적용하는 것", "T", "처지를 헤아려 적용하는 것", "F"],
+      ["TF", "의견이 부딪히면 나는?", "논리로 맞춘다", "T", "관계가 상하지 않게 맞춘다", "F"],
+      ["TF", "좋은 결정이라는 느낌은?", "기준에 맞다", "T", "사람이 덜 다친다", "F"],
+      ["JP", "일정은 어느 쪽이 편한가?", "미리 정해 두면 편하다", "J", "열어 두고 정하면 편하다", "P"],
+      ["JP", "마감이 있으면 나는?", "일찍 끝을 보고 싶다", "J", "가까워져야 더 잘 된다", "P"],
+      ["JP", "계획이 바뀌면?", "다시 정리해야 놓인다", "J", "바꾸면 오히려 낫다", "P"],
+      ["JP", "일을 두는 방식은?", "하나 끝내고 다음으로 간다", "J", "여러 개를 열어 둔다", "P"],
+      ["JP", "여행 준비는?", "동선이 있어야 한다", "J", "가서 정해도 된다", "P"],
+    ];
+    function mbtiScore() {
+      const score = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+      if (!Array.isArray(state.mbtiAnswers)) state.mbtiAnswers = [];
+      state.mbtiAnswers.forEach((letter) => { score[letter] += 1; });
+      return score;
+    }
+    function mbtiResult() {
+      const score = mbtiScore();
+      const side = (a, b) => (score[a] >= score[b] ? a : b);
+      return side("E", "I") + side("S", "N") + side("T", "F") + side("J", "P");
+    }
+    function mbtiStepHtml() {
+      if (state.mbtiMode === "test") {
+        const item = MBTI_QUESTIONS[state.mbtiQ];
+        return `<p class="muted">문항 ${state.mbtiQ + 1} / ${MBTI_QUESTIONS.length}. 편한 쪽에 가깝게 고르세요.</p><p style="font-weight:600">${esc(item[1])}</p><div class="grid" style="margin-top:12px"><button class="pick" style="height:auto;min-height:48px;padding:12px" data-act="mbti-answer" data-arg="${item[3]}">${esc(item[2])}</button><button class="pick" style="height:auto;min-height:48px;padding:12px" data-act="mbti-answer" data-arg="${item[5]}">${esc(item[4])}</button></div>${state.mbtiQ > 0 ? `<button class="btn" style="margin-top:12px" data-act="mbti-back">이전 문항</button>` : ""}<button class="link dim" style="display:block;margin-top:12px" data-act="mbti-cancel">유형을 이미 알고 있어요</button>`;
+      }
+      return `<p style="font-weight:600">모르면 알아볼까요?</p><p class="muted">에너지, 정보, 판단, 생활 방식 스무 문항입니다. 공식 인증 시험은 아닙니다.</p><button class="btn gold" style="margin-top:12px" data-act="mbti-start">테스트하기</button><p class="muted" style="margin-top:16px">알고 있으면 고르세요.</p><div class="grid g4" style="margin-top:8px">${MBTI.map((t) => `<button class="pick${state.mbti === t ? " on" : ""}" data-act="mbti" data-arg="${t}">${t}</button>`).join("")}</div>${state.mbti ? note(`${state.mbti}. ${mbtiLine(state.mbti)}`) : ""}`;
+    }
     function mbtiLine(type) {
       if (type[1] === "N" && type[2] === "T") return "기준을 한 줄로 적고 오늘은 그것만 진행하세요.";
       if (type[1] === "N") return "사람에게 미칠 영향만 따로 적으세요.";
@@ -210,6 +250,8 @@
         const raw = JSON.parse(localStorage.getItem(KEY) || "null");
         if (!raw) return;
         state = { ...blank(), ...raw, modal: false, spinning: false };
+        if (!Array.isArray(state.mbtiAnswers)) state.mbtiAnswers = [];
+        if (state.mbtiMode !== "test") state.mbtiMode = "pick";
         const today = todayISO();
         const todayNote = (state.days || []).find((d) => d.date === today);
         state.days = (state.days || []).filter((d) => d.date !== today);
@@ -232,7 +274,7 @@
       state.backtest = ""; state.taekil = ""; state.taekilOpen = false; state.notice = "";
       state.zodiac = keep.zodiac; state.zodiacOn = keep.zodiacOn; state.sign = keep.sign; state.signOn = keep.signOn; state.signRead = keep.signRead;
       state.cal = keep.cal; state.birth = keep.birth; state.time = keep.time; state.ly = keep.ly; state.lm = keep.lm;
-      state.ld = keep.ld; state.leap = keep.leap; state.blood = keep.blood; state.mbti = keep.mbti;
+      state.ld = keep.ld; state.leap = keep.leap; state.blood = keep.blood; state.mbti = keep.mbti; state.mbtiMode = "pick"; state.mbtiQ = 0; state.mbtiAnswers = [];
       state.iqStep = keep.iqStep; state.iqOk = keep.iqOk; state.iqDone = keep.iqDone; state.hour = keep.hour;
       state.partner = keep.partner; state.saju = keep.saju; state.match = keep.match; state.days = keep.days; state.shareCount = keep.shareCount;
     }
@@ -298,7 +340,7 @@
         return stepHead(id, "생년월일") + `<div class="grid g2"><button class="pick seg${state.cal==="solar"?" on":""}" data-act="cal" data-arg="solar">양력</button><button class="pick seg${state.cal==="lunar"?" on":""}" data-act="cal" data-arg="lunar">음력</button></div>${solar}<label class="field">태어난 시간<input id="time" data-field="time" type="time" value="${esc(state.time)}"></label>${extra}</section>`;
       }
       if (id === "blood") return stepHead(id, "혈액형") + `<div class="grid g4">${BLOODS.map((b)=>`<button class="pick${state.blood===b?" on":""}" data-act="blood" data-arg="${b}">${b}</button>`).join("")}</div>${state.blood?note(`${state.blood}형으로 기록했습니다. 오늘 점수는 뇌 효율만 바꿉니다.`):""}</section>`;
-      if (id === "mbti") return stepHead(id, "MBTI") + `<div class="grid g4">${MBTI.map((t)=>`<button class="pick${state.mbti===t?" on":""}" data-act="mbti" data-arg="${t}">${t}</button>`).join("")}</div>${state.mbti?note(`${state.mbti}. ${mbtiLine(state.mbti)}`):""}</section>`;
+      if (id === "mbti") return stepHead(id, "MBTI") + mbtiStepHtml() + `</section>`;
       if (id === "iq") {
         if (state.iqDone) return stepHead(id, "IQ") + note(`3문항 중 ${state.iqOk}. 패턴이 또렷합니다. 임상 검사가 아닙니다.`) + `</section>`;
         const item = IQ[state.iqStep];
@@ -422,7 +464,28 @@
       else if (act === "hour") { state.hour = Number(arg); state.time = STARTS[state.hour]; save(); paint(); }
       else if (act === "match") { state.match = true; paint(); }
       else if (act === "blood") { state.blood = arg; save(); paint(); }
-      else if (act === "mbti") { state.mbti = arg; save(); paint(); }
+      else if (act === "mbti") { state.mbti = arg; state.mbtiMode = "pick"; save(); paint(); }
+      else if (act === "mbti-start") {
+        state.mbtiMode = "test";
+        state.mbtiQ = 0;
+        state.mbtiAnswers = [];
+        state.mbti = "";
+        save(); paint();
+      }
+      else if (act === "mbti-answer") {
+        state.mbtiAnswers = state.mbtiAnswers.slice(0, state.mbtiQ).concat(arg);
+        state.mbtiQ += 1;
+        if (state.mbtiQ >= MBTI_QUESTIONS.length) {
+          state.mbti = mbtiResult();
+          state.mbtiMode = "pick";
+        }
+        save(); paint();
+      }
+      else if (act === "mbti-back") {
+        if (state.mbtiQ > 0) state.mbtiQ -= 1;
+        save(); paint();
+      }
+      else if (act === "mbti-cancel") { state.mbtiMode = "pick"; state.mbtiQ = 0; state.mbtiAnswers = []; save(); paint(); }
       else if (act === "iq") {
         if (Number(arg) === IQ[state.iqStep][2]) state.iqOk += 1;
         if (state.iqStep + 1 >= IQ.length) state.iqDone = true; else state.iqStep += 1;
