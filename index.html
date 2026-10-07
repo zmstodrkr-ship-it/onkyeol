@@ -83,7 +83,7 @@
       ["사수", "11.23–12.21", "범위 밖은 내일로 미루세요."], ["염소", "12.22–1.19", "순서를 정하면 반은 끝난 날입니다."],
       ["물병", "1.20–2.18", "새 방식은 하나만 시험하세요."], ["물고기", "2.19–3.20", "느낌과 숫자를 분리해서 적으세요."],
     ];
-    const STEPS = [["zodiac","띠"],["sign","별자리"],["brain","뇌 효율"],["birth","생년월일"],["blood","혈액형"],["mbti","MBTI"],["iq","IQ"],["worry","한 줄 고민"],["chart","시장 레이어"],["backtest","지난 선택"]];
+    const STEPS = [["zodiac","띠"],["sign","별자리"],["brain","뇌 효율"],["birth","생년월일"],["blood","혈액형"],["mbti","MBTI"],["iq","IQ"],["worry","한 줄 고민"],["backtest","지난 선택"]];
     const BLOODS = ["A","B","O","AB"];
     const MBTI = ["INTJ","INTP","ENTJ","ENTP","INFJ","INFP","ENFJ","ENFP","ISTJ","ISFJ","ESTJ","ESFJ","ISTP","ISFP","ESTP","ESFP"];
     const IQ = [
@@ -251,6 +251,8 @@
         if (!raw) return;
         state = { ...blank(), ...raw, modal: false, spinning: false };
         if (!Array.isArray(state.mbtiAnswers)) state.mbtiAnswers = [];
+        state.opened = (state.opened || []).filter((id) => STEPS.some(([step]) => step === id));
+        if (!STEPS.some(([step]) => step === state.focus)) state.focus = state.opened[state.opened.length - 1] || "";
         if (state.mbtiMode !== "test") state.mbtiMode = "pick";
         const today = todayISO();
         const todayNote = (state.days || []).find((d) => d.date === today);
@@ -355,11 +357,6 @@
         }
         return stepHead(id, "한 줄 고민") + block + `</section>`;
       }
-      if (id === "chart") {
-        const bars = [[1,42],[2,68],[3,55],[4,80],[5,61],[6,74]].map(([l,h]) => `<div class="bar"><div style="flex:1;width:100%;display:flex;align-items:flex-end"><i style="height:${h}%"></i></div><span>${l}</span></div>`).join("");
-        const feng = state.feng ? `<div class="opt"><p style="font-weight:600">풍수</p><div class="grid g4">${DIRS.map((d)=>`<button class="pick${state.dir===d?" on":""}" data-act="dir" data-arg="${d}">${d}</button>`).join("")}</div>${state.dir?note(`${state.dir}쪽을 오늘 확인할 방향으로 잡았습니다.`):""}</div>` : `<button class="btn dash" style="margin-top:16px" data-act="feng">선택 · 풍수</button>`;
-        return stepHead(id, "시장 레이어") + `<p class="muted">최근 6구간 예시입니다. 매수 신호가 아닙니다.</p><div class="bars">${bars}</div><p>예시 2,614</p>${feng}</section>`;
-      }
       if (id === "backtest") {
         const lines = state.backtest ? state.backtest.split("\n").map(note).join("") : "";
         return stepHead(id, "지난 선택") + `<button class="btn" data-act="backtest">지난 선택 보기</button>${lines}</section>`;
@@ -376,7 +373,6 @@
       if (id === "mbti" && state.mbti) return note(`${state.mbti}. ${mbtiLine(state.mbti)}`);
       if (id === "iq" && state.iqDone) return note(`3문항 중 ${state.iqOk}. 패턴이 또렷습니다. 임상 검사가 아닙니다.`);
       if (id === "worry" && state.report) return note(state.report);
-      if (id === "chart") return note(state.dir ? `${state.dir}쪽 · 예시 2,614. 매수 신호가 아닙니다.` : "예시 2,614. 매수 신호가 아닙니다.");
       if (id === "backtest" && state.backtest) return state.backtest.split("\n").map(note).join("");
       return "";
     }
@@ -499,8 +495,6 @@
         save(); paint();
       }
       else if (act === "taekil") { state.taekilOpen = true; paint(); }
-      else if (act === "feng") { state.feng = true; paint(); }
-      else if (act === "dir") { state.dir = arg; save(); paint(); }
       else if (act === "backtest") {
         state.backtest = state.brain !== null && state.brain < 600
           ? "자중일 다음 날의 선택이 남았습니다.\n바로 실행한 날은 범위가 컸습니다.\n한 가지만 고른 날이 가장 짧았습니다."
