@@ -39,6 +39,7 @@
     .field input, .field select { margin-top: 4px; height: 48px; width: 100%; border-radius: 16px; border: 1px solid var(--line); background: var(--raised); padding: 0 12px; }
     .row { display: flex; gap: 8px; overflow-x: auto; margin-top: 8px; }
     .pill { height: 40px; flex: 0 0 auto; border-radius: 999px; border: 1px solid var(--line); background: transparent; padding: 0 12px; }
+    .pill.on { background: var(--gold); color: var(--ink); border: 0; }
     .link { background: none; border: 0; color: var(--gold); font-weight: 600; padding: 0; }
     .link.dim { color: var(--muted); font-size: 12px; font-weight: 400; }
     .bars { display: flex; align-items: flex-end; gap: 8px; height: 112px; margin-top: 12px; }
@@ -104,7 +105,7 @@
       game: "idle", brain: null, early: false, worry: "", report: "", backtest: "",
       zodiac: 0, zodiacOn: false, sign: 0, signOn: false, signRead: false, cal: "solar", birth: "", time: "",
       ly: "", lm: "1", ld: "1", leap: false, blood: "", mbti: "", mbtiMode: "pick", mbtiQ: 0, mbtiAnswers: [], iqStep: 0, iqOk: 0, iqDone: false,
-      saju: false, hour: null, match: false, partner: "", partnerAnimal: -1, taekilOpen: false, taekil: "", feng: false, dir: "",
+      saju: false, hour: null, sajuTopic: "", match: false, matchKind: "", partner: "", partnerAnimal: -1, taekilOpen: false, taekil: "", taekilKind: "", feng: false, dir: "",
       days: [], shareCount: 0, tucked: false,
     });
     let state = blank();
@@ -188,6 +189,22 @@
       const top = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
       return `${pillarsOf.day[0]}일간은 ${STEM_EL[STEMS.indexOf(pillarsOf.day[0])]}입니다. 여덟 글자 중 ${top[0]}이 ${top[1]}번으로 가장 많습니다.`;
     }
+    const SAJU_TOPICS = ["재물", "일", "관계", "건강", "올해"];
+    const MATCH_KINDS = ["연인", "동업", "가족", "친구"];
+    const TAEKIL_KINDS = ["이사", "계약", "개업", "면접", "결혼", "여행"];
+    function sajuTopicLine() {
+      const four = pillars();
+      if (!four || !state.sajuTopic) return "";
+      const el = STEM_EL[STEMS.indexOf(four.day[0])];
+      const lines = {
+        재물: "돈은 일간이 감당하는 크기만 보세요. 오늘은 새 판보다 이미 있는 것을 세세요.",
+        일: "일은 하나만 끝까지 보세요. 여러 판을 같은 날 열지 마세요.",
+        관계: "오늘은 설명을 한 문장으로 줄이세요.",
+        건강: `가장 많은 오행을 과하게 쓰지 마세요. ${el} 기운은 한 단계만 낮추세요.`,
+        올해: "큰 결정보다 분기 하나를 정하세요.",
+      };
+      return `${state.sajuTopic}. ${four.day[0]}일간은 ${el}. ${lines[state.sajuTopic]}`;
+    }
     function branchRelation(a, b) {
       const hit = (pairs) => pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
       if (hit([[0,6],[1,7],[2,8],[3,9],[4,10],[5,11]])) return "충";
@@ -197,18 +214,21 @@
     }
     function matchLine() {
       const mine = pillars();
-      if (!mine || !(state.partnerAnimal >= 0)) return "";
-      const mineBranch = BRANCHES.indexOf(mine.day[1]);
-      const kind = branchRelation(mineBranch, state.partnerAnimal);
-      const mineName = mine.day;
-      const theirName = ANIMALS[state.partnerAnimal] + "띠";
-      if (kind === "충") return `내 일지 ${mineName}와 ${theirName}는 충입니다. 오늘은 같은 결정을 같이 밀지 마세요.`;
-      if (kind === "육합") return `내 일지 ${mineName}와 ${theirName}는 육합입니다. 같은 일을 같이 밀어도 됩니다.`;
-      if (kind === "삼합") return `내 일지 ${mineName}와 ${theirName}는 삼합입니다. 역할만 나누면 됩니다.`;
-      return `내 일지 ${mineName}와 ${theirName}는 충도 합도 아닙니다. 기준을 한 문장으로 맞추세요.`;
+      if (!mine || !(state.partnerAnimal >= 0) || !state.matchKind) return "";
+      const kind = branchRelation(BRANCHES.indexOf(mine.day[1]), state.partnerAnimal);
+      const who = `${state.matchKind} · ${ANIMALS[state.partnerAnimal]}띠`;
+      const day = mine.day;
+      if (kind === "충") {
+        if (state.matchKind === "동업") return `${who}. 내 일지 ${day}와 충입니다. 역할이 겹치면 오늘은 시작하지 마세요.`;
+        if (state.matchKind === "연인") return `${who}. 내 일지 ${day}와 충입니다. 오늘은 결론보다 사실만 맞추세요.`;
+        return `${who}. 내 일지 ${day}와 충입니다. 같은 결정을 같이 밀지 마세요.`;
+      }
+      if (kind === "육합") return `${who}. 내 일지 ${day}와 육합입니다. 같은 일을 같이 밀어도 됩니다.`;
+      if (kind === "삼합") return `${who}. 내 일지 ${day}와 삼합입니다. 역할만 나누면 됩니다.`;
+      return `${who}. 내 일지 ${day}와는 충도 합도 아닙니다. 기준을 한 문장으로 맞추세요.`;
     }
     function taekilText() {
-      if (!state.taekil || gap(state.taekil) === null) return "";
+      if (!state.taekil || !state.taekilKind || gap(state.taekil) === null) return "";
       const day = cycleName(dayCycle(state.taekil));
       const when = new Date(`${state.taekil}T00:00:00`);
       const days = gap(state.taekil);
@@ -217,13 +237,13 @@
       let rel = "생년월일이 있으면 내 일주와 충·합을 비교합니다.";
       if (mine) {
         const kind = branchRelation(BRANCHES.indexOf(mine.day[1]), BRANCHES.indexOf(day[1]));
-        if (kind === "충") rel = `내 일지 ${mine.day}와 충입니다. 계약이나 시작보다 정리에 가깝습니다.`;
-        else if (kind === "육합") rel = `내 일지 ${mine.day}와 육합입니다. 시작을 잡아도 되는 날입니다.`;
-        else if (kind === "삼합") rel = `내 일지 ${mine.day}와 삼합입니다. 역할을 나누는 날에 맞습니다.`;
-        else rel = `내 일지 ${mine.day}와는 충·합이 없습니다. 날짜보다 조건을 먼저 보세요.`;
+        if (kind === "충") rel = `내 일지 ${mine.day}와 충입니다. ${state.taekilKind} 일정은 정리에 가깝고, 시작은 미루세요.`;
+        else if (kind === "육합") rel = `내 일지 ${mine.day}와 육합입니다. ${state.taekilKind} 날짜로 잡아도 됩니다.`;
+        else if (kind === "삼합") rel = `내 일지 ${mine.day}와 삼합입니다. ${state.taekilKind} 일정은 역할을 나누면 맞습니다.`;
+        else rel = `내 일지 ${mine.day}와는 충·합이 없습니다. ${state.taekilKind} 일정은 날짜보다 조건을 먼저 보세요.`;
       }
       const worry = state.worry.trim() ? `고민은 ${state.worry.trim()}. ` : "";
-      return `${state.taekil} · ${WEEK[when.getDay()]}요일 · ${whenText} · 일진 ${day}. ${worry}${rel}`;
+      return `${state.taekilKind} · ${state.taekil} · ${WEEK[when.getDay()]}요일 · ${whenText} · 일진 ${day}. ${worry}${rel}`;
     }
     function solarFromLunar(y, m, d, leap) {
       if (!window.KoreanLunarCalendar || !y || !m || !d) return "";
@@ -317,8 +337,8 @@
       if (id === "sign") return state.signOn;
       if (id === "brain") return state.game === "done";
       if (id === "birth") return lived(state.birth) !== null && hourIndex(state.time) !== null;
-      if (id === "saju") return !!pillars();
-      if (id === "match") return !!pillars() && state.partnerAnimal >= 0;
+      if (id === "saju") return !!pillars() && !!state.sajuTopic;
+      if (id === "match") return !!pillars() && state.partnerAnimal >= 0 && !!state.matchKind;
       if (id === "blood") return state.blood !== "";
       if (id === "mbti") return state.mbti !== "";
       if (id === "iq") return state.iqDone;
@@ -371,7 +391,7 @@
       state.cal = keep.cal; state.birth = keep.birth; state.time = keep.time; state.ly = keep.ly; state.lm = keep.lm;
       state.ld = keep.ld; state.leap = keep.leap; state.blood = keep.blood; state.mbti = keep.mbti; state.mbtiMode = "pick"; state.mbtiQ = 0; state.mbtiAnswers = [];
       state.iqStep = keep.iqStep; state.iqOk = keep.iqOk; state.iqDone = keep.iqDone; state.hour = keep.hour;
-      state.partner = keep.partner; state.partnerAnimal = keep.partnerAnimal; state.taekil = keep.taekil; state.saju = keep.saju; state.match = keep.match; state.days = keep.days; state.shareCount = keep.shareCount;
+      state.partner = keep.partner; state.partnerAnimal = keep.partnerAnimal; state.matchKind = keep.matchKind; state.sajuTopic = keep.sajuTopic; state.taekil = keep.taekil; state.taekilKind = keep.taekilKind; state.saju = keep.saju; state.match = keep.match; state.days = keep.days; state.shareCount = keep.shareCount;
     }
     function clearAll() { localStorage.removeItem(KEY); state = blank(); }
 
@@ -435,12 +455,14 @@
         const four = pillars();
         if (!four) return stepHead(id, "사주팔자") + `<p class="muted">생년월일과 태어난 시간이 있어야 네 기둥을 세웁니다.</p></section>`;
         const cells = [["년주", four.year], ["월주", four.month], ["일주", four.day], ["시주", four.hour]].map(([label, value]) => `<div class="pick on" style="height:auto;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-size:11px;opacity:.7">${label}</span><span>${value}</span></div>`).join("");
-        return stepHead(id, "사주팔자") + `<p class="muted">년은 입춘, 월은 절기, 일은 1900년 1월 1일 갑술일부터 셉니다.</p><div class="grid g4">${cells}</div>${note(elementLine(four))}</section>`;
+        const topics = SAJU_TOPICS.map((name) => `<button class="pick${state.sajuTopic === name ? " on" : ""}" data-act="saju-topic" data-arg="${name}">${name}</button>`).join("");
+        return stepHead(id, "사주팔자") + `<p class="muted">년은 입춘, 월은 절기, 일은 1900년 1월 1일 갑술일부터 셉니다.</p><div class="grid g4">${cells}</div>${note(elementLine(four))}<p class="muted" style="margin-top:16px">볼 항목을 고르세요.</p><div class="grid g3" style="margin-top:8px">${topics}</div>${state.sajuTopic ? note(sajuTopicLine()) : ""}</section>`;
       }
       if (id === "match") {
         if (!pillars()) return stepHead(id, "궁합") + `<p class="muted">사주팔자의 일지가 있어야 비교합니다.</p></section>`;
+        const kinds = MATCH_KINDS.map((name) => `<button class="pick${state.matchKind === name ? " on" : ""}" data-act="match-kind" data-arg="${name}">${name}</button>`).join("");
         const picks = ANIMALS.map((name, i) => `<button class="pick${state.partnerAnimal === i ? " on" : ""}" data-act="partner" data-arg="${i}">${name}</button>`).join("");
-        return stepHead(id, "궁합") + `<p class="muted">상대 띠를 고르면 내 일지와 충·합을 비교합니다. 점수는 없습니다.</p><div class="grid g4">${picks}</div>${state.partnerAnimal >= 0 ? note(matchLine()) : ""}</section>`;
+        return stepHead(id, "궁합") + `<p class="muted">관계와 상대 띠를 고르면 내 일지와 충·합을 비교합니다. 점수는 없습니다.</p><div class="grid g4">${kinds}</div><p class="muted" style="margin-top:16px">상대 띠</p><div class="grid g4">${picks}</div>${matchLine() ? note(matchLine()) : ""}</section>`;
       }
       if (id === "blood") return stepHead(id, "혈액형") + `<div class="grid g4">${BLOODS.map((b)=>`<button class="pick${state.blood===b?" on":""}" data-act="blood" data-arg="${b}">${b}</button>`).join("")}</div>${state.blood?note(`${state.blood}형으로 기록했습니다. 오늘 점수는 뇌 효율만 바꿉니다.`):""}</section>`;
       if (id === "mbti") return stepHead(id, "MBTI") + mbtiStepHtml() + `</section>`;
@@ -457,7 +479,9 @@
       }
       if (id === "taekil") {
         const text = taekilText();
-        return stepHead(id, "택일") + `<p class="muted">후보 날짜의 일진을 보고, 내 일주와 충·합인지만 비교합니다.</p><label class="field">후보 날짜<input id="taekil" data-field="taekil" type="date" value="${esc(state.taekil)}"></label>${text ? note(text) : ""}</section>`;
+        const kinds = TAEKIL_KINDS.map((name) => `<button class="pick${state.taekilKind === name ? " on" : ""}" data-act="taekil-kind" data-arg="${name}">${name}</button>`).join("");
+        const preview = state.taekil && gap(state.taekil) !== null && !text ? note(`일진 ${cycleName(dayCycle(state.taekil))}. 용도를 고르면 충·합까지 비교합니다.`) : "";
+        return stepHead(id, "택일") + `<p class="muted">용도와 후보 날짜를 고르세요. 일진과 내 일주의 충·합만 비교합니다.</p><div class="grid g3">${kinds}</div><label class="field">후보 날짜<input id="taekil" data-field="taekil" type="date" value="${esc(state.taekil)}"></label>${text ? note(text) : preview}</section>`;
       }
       if (id === "backtest") {
         const lines = state.backtest ? state.backtest.split("\n").map(note).join("") : "";
@@ -471,7 +495,7 @@
       if (id === "sign") return signFortuneHtml();
       if (id === "brain" && state.brain !== null) return note(`${state.brain} / 1000 · ${band(state.brain)}. ${guide(state.brain)}`);
       if (id === "birth" && lived(state.birth) !== null) return note(`${state.cal === "lunar" ? "음력" : "양력"} ${state.birth} · ${state.time} · 오늘까지 ${lived(state.birth).toLocaleString("ko-KR")}일`);
-      if (id === "saju" && pillars()) { const four = pillars(); return note(`${four.year}년 ${four.month}월 ${four.day}일 ${four.hour}시. ${elementLine(four)}`); }
+      if (id === "saju" && pillars()) { const four = pillars(); return note(state.sajuTopic ? `${four.year}년 ${four.month}월 ${four.day}일 ${four.hour}시. ${sajuTopicLine()}` : `${four.year}년 ${four.month}월 ${four.day}일 ${four.hour}시. ${elementLine(four)}`); }
       if (id === "match" && state.partnerAnimal >= 0 && matchLine()) return note(matchLine());
       if (id === "blood" && state.blood) return note(`${state.blood}형으로 기록했습니다. 오늘 점수는 뇌 효율만 바꿉니다.`);
       if (id === "mbti" && state.mbti) return note(`${state.mbti}. ${mbtiLine(state.mbti)}`);
@@ -501,6 +525,7 @@
       } else if (state.result) {
         html += `<section class="card" style="margin-top:32px"><p class="gold" style="font-size:12px">룰렛 결과</p><p>${esc(state.result[0])} 강세 · ${esc(state.result[1])}</p></section>`;
       }
+      if (state.ready) html += `<p class="muted" style="margin-top:20px;font-size:12px">메뉴</p><div class="row">${[["saju","사주팔자"],["match","궁합"],["taekil","택일"]].map(([id, title]) => `<button class="pill${cur === id ? " on" : ""}" data-act="menu" data-arg="${id}">${title}</button>`).join("")}</div>`;
       if (state.days.length) html += `<section class="card" style="margin-top:16px"><p class="muted" style="font-size:12px">지난 오늘</p>${[...state.days].reverse().slice(0,5).map((d)=>`<p style="font-size:14px">${esc(d.date)} · ${esc(d.element)} 강세${d.worry?` · ${esc(d.worry)}`:""}</p>`).join("")}</section>`;
       html += stack();
       html += viewStep().replace("</section>", (currentId() && done(currentId()) ? `<button class="btn" style="margin-top:12px" data-act="dismiss">닫기</button>` : "") + "</section>");
@@ -561,6 +586,10 @@
       else if (act === "brain") tapGame();
       else if (act === "cal") { state.cal = arg; if (arg === "lunar") syncLunar(); save(); paint(); }
       else if (act === "leap") { state.leap = !state.leap; syncLunar(); save(); paint(); }
+      else if (act === "menu") { openStep(arg); save(); paint(); }
+      else if (act === "saju-topic") { state.sajuTopic = arg; save(); paint(); }
+      else if (act === "match-kind") { state.matchKind = arg; save(); paint(); }
+      else if (act === "taekil-kind") { state.taekilKind = arg; save(); paint(); }
       else if (act === "partner") { state.partnerAnimal = Number(arg); save(); paint(); }
       else if (act === "blood") { state.blood = arg; save(); paint(); }
       else if (act === "mbti") { state.mbti = arg; state.mbtiMode = "pick"; save(); paint(); }
