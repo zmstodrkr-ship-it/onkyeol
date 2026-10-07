@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>온결</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" />
+  <style>
+    :root { color-scheme: dark; --bg:#070b12; --surface:#1a2436; --raised:#121a28; --fg:#f4efe4; --muted:#a8b0be; --gold:#d4af5c; --ink:#1a1408; --line:rgb(244 239 228 / .12); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: "IBM Plex Sans KR", system-ui, sans-serif; }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .screen { width: min(100%, 430px); margin: 0 auto; min-height: 100dvh; padding: 24px 16px 40px; }
+    h1 { margin: 40px 0 0; font-size: 1.75rem; }
+    .muted { color: var(--muted); }
+    .gold { color: var(--gold); }
+    .card { border: 1px solid var(--line); background: var(--surface); border-radius: 22px; padding: 16px; }
+    .wheel-wrap { width: 224px; height: 224px; margin: 8px auto; position: relative; }
+    .wheel { width: 224px; height: 224px; border-radius: 50%; position: relative; background: conic-gradient(#2ea05a 0 72deg, #d6453a 72deg 144deg, #c49a4a 144deg 216deg, #c5ced8 216deg 288deg, #3a7cc4 288deg 360deg); box-shadow: inset 0 0 0 10px rgb(12 18 28 / .55); transition: transform 1.4s cubic-bezier(.15,.7,.1,1); }
+    .wheel span { position: absolute; left: 50%; top: 50%; font-weight: 700; color: #1a1408; }
+    .hub { position: absolute; inset: 68px; border-radius: 50%; border: 2px solid var(--gold); background: var(--raised); display: grid; place-items: center; color: var(--gold); font-size: 14px; font-weight: 600; pointer-events: none; }
+    .pointer { width: 0; height: 0; margin: 0 auto -6px; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid var(--gold); }
+    .btn { height: 48px; width: 100%; border-radius: 16px; border: 1px solid var(--line); background: transparent; font-weight: 600; }
+    .btn.gold { background: var(--gold); color: var(--ink); border: 0; font-weight: 700; }
+    .btn:disabled { opacity: .45; }
+    .grid { display: grid; gap: 8px; }
+    .g2 { grid-template-columns: 1fr 1fr; }
+    .g3 { grid-template-columns: 1fr 1fr 1fr; }
+    .g4 { grid-template-columns: repeat(4, 1fr); }
+    .chip, .pick { border-radius: 16px; border: 1px solid var(--line); background: var(--raised); font-weight: 600; }
+    .pick { height: 48px; }
+    .pick.on, .seg.on { background: var(--gold); color: var(--ink); border: 0; }
+    .pick.tall { height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+    .note { margin-top: 12px; background: var(--raised); border-radius: 16px; padding: 12px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .step { margin-top: 16px; border: 1px solid rgb(212 175 92 / .3); background: var(--surface); border-radius: 22px; padding: 16px; }
+    .field { display: block; font-size: 12px; color: var(--muted); margin-top: 12px; }
+    .field input, .field select { margin-top: 4px; height: 48px; width: 100%; border-radius: 16px; border: 1px solid var(--line); background: var(--raised); padding: 0 12px; }
+    .row { display: flex; gap: 8px; overflow-x: auto; margin-top: 8px; }
+    .pill { height: 40px; flex: 0 0 auto; border-radius: 999px; border: 1px solid var(--line); background: transparent; padding: 0 12px; }
+    .link { background: none; border: 0; color: var(--gold); font-weight: 600; padding: 0; }
+    .link.dim { color: var(--muted); font-size: 12px; font-weight: 400; }
+    .bars { display: flex; align-items: flex-end; gap: 8px; height: 112px; margin-top: 12px; }
+    .bars i { display: block; width: 100%; border-radius: 8px 8px 0 0; background: rgb(212 175 92 / .8); }
+    .bar { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; }
+    .bar span { margin-top: 4px; font-size: 10px; color: var(--muted); }
+    .modal { position: fixed; inset: 0; background: rgb(0 0 0 / .7); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .sheet { width: min(100%, 360px); background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 16px; }
+    .dash { border-style: dashed; color: var(--muted); font-size: 14px; }
+    .opt { margin-top: 16px; border: 1px dashed var(--line); border-radius: 16px; padding: 12px; }
+    header { display: flex; justify-content: space-between; align-items: center; }
+    .word { letter-spacing: .2em; font-weight: 600; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="app" class="screen"></div>
+  <script>
+(function(e,t){typeof exports==`object`&&typeof module<`u`?module.exports=t():typeof define==`function`&&define.amd?define([],t):(e=typeof globalThis<`u`?globalThis:e||self,e.KoreanLunarCalendar=t())})(this,function(){var e={KOREAN_LUNAR_MIN_VALUE:10000101,KOREAN_LUNAR_MAX_VALUE:20501118,KOREAN_SOLAR_MIN_VALUE:10000213,KOREAN_SOLAR_MAX_VALUE:20501231,KOREAN_LUNAR_BASE_YEAR:1e3,SOLAR_LUNAR_DAY_DIFF:43,LUNAR_SMALL_MONTH_DAY:29,LUNAR_BIG_MONTH_DAY:30,SOLAR_SMALL_YEAR_DAY:365,SOLAR_BIG_YEAR_DAY:366,SOLAR_DAYS:[31,28,31,30,31,30,31,31,30,31,30,31,29],KOREAN_CHEONGAN:[44049,51012,48337,51221,47924,44592,44221,49888,51076,44228].map(e=>String.fromCharCode(e)),KOREAN_GANJI:[51088,52629,51064,47896,51652,49324,50724,48120,49888,50976,49696,54644].map(e=>String.fromCharCode(e)),KOREAN_GAPJA_UNIT:[45380,50900,51068].map(e=>String.fromCharCode(e)),CHINESE_CHEONGAN:[30002,20057,19993,19969,25098,24049,24218,36763,22764,30328].map(e=>String.fromCharCode(e)),CHINESE_GANJI:[23376,19985,23493,21359,36784,24051,21320,26410,30003,37193,25100,20133].map(e=>String.fromCharCode(e)),CHINESE_GAPJA_UNIT:[24180,26376,26085].map(e=>String.fromCharCode(e)),INTERCALATION_STR:[50980,38287].map(e=>String.fromCharCode(e)),KOREAN_LUNAR_DATA:[2194016855,2197734699,2193886506,2194017621,3271595437,2193884522,2194016621,2197837021,3267626157,2193885773,2197827149,2193885990,3271600982,2194016981,2193883994,2197842298,3267758427,2193884315,2197834395,2193885771,3271674533,2193884842,2194016981,2197852893,3267625653,2194016599,2197705902,2194017431,3267626571,2197759306,2194017705,2197857974,3267757677,2193883758,2197907758,2193885486,3267628182,2197835157,2193886538,2197867881,3267627864,2194148715,2197918315,2193883741,3267627307,2197838507,2193885845,2193886026,3271696043,2193883861,2197927258,2194015419,3267625563,2197845303,2193884459,2193884821,3271571285,2193884842,2198063797,2193883765,3267626166,2197850718,2193885782,2193886502,3271581350,2194017621,2193884586,2197822826,3267758445,2197861551,2193884317,2193885773,3271589165,2193885862,2194017109,2197833173,3267625818,2194016605,2197885299,2193884251,3271596623,2193884747,2193885861,2197842793,3267757749,2193883866,2197826230,2194016567,3271476375,2194017431,2193884747,2197718698,3267759525,2193884596,2198030957,2193883822,3267628641,2197826862,2193886358,2197855565,2193886538,2194017637,2197906837,2194015581,3267625581,2197826141,2193885483,2197858967,3267627669,2193886026,2197850970,2194016981,3267757403,2197832375,2193884247,2193884459,3271564587,2193884821,2197853997,2193884586,3267758773,2197837037,2193884342,2194016855,3271504974,2193886502,2197929618,2194017621,3267626410,2197850554,2194016621,2193884334,3271576221,2193885773,2193886501,2197827365,3267627860,2198056297,2193883866,2194016605,3271648411,2193884315,2193885771,2197834571,3267626661,2197863251,2193884852,2194016950,3271657814,2194016663,2193884311,2197833367,3267626315,2197735077,2194017701,2193884588,3271797429,2193883758,2193885486,2197843118,3267628182,2193886538,2197827402,2194017621,3271603563,2194015579,2193883741,2197846333,3267627303,2193885845,2197904661,2193886026,3267758933,2197885653,2194015451,2197721694,3267758679,2193884459,2197842603,2193884821,3267626666,2197830570,2194016949,2197861559,3267626158,2194016855,2197714222,2193886502,3267759763,2197837525,2193884586,2194016693,3271566701,2193884334,2197924429,2193885773,3267628326,2197843301,2193886034,2194017642,3271567066,2194016605,2197931165,2193884315,3267627595,2197850795,2193884837,2193886036,3271576500,2194016950,2194016603,2197824823,3267626135,2197853775,2193884491,2193884837,3271653061,2193884588,2194016950,2197895278,3267627310,2197867671,2193886358,2193886538,3271593386,2194017109,2193884522,2197969627,3267625565,2193885486,2197826859,2193885845,3271597389,2193885994,2194017109,2197845365,3267626202,2194016859,2197833047,2193884459,3271674515,2193884819,2193884842,2197850842,3267758821,2193884342,2197834414,2194016855,3267626279,2197759270,2194017875,2197857995,3267626410,2194015661,2197906605,2193884334,3267627598,2197835085,2193886502,2197863763,3267627858,2194017130,2197919082,2194015575,3267626141,2197903899,2193885771,2193885861,3271564965,2193886034,2197863258,2194016950,3267758427,2197841079,2193884311,2193884747,3271571275,2193884837,2197862067,2193884588,3267758774,2197914285,2193884318,2193885773,3271581003,2193885989,2193886034,2197892690,3267758938,2197858654,2194016603,2193884315,3271584343,2193885771,2193885861,2197834661,3267626708,2197867222,2194016950,2194016567,2197849247,2193884311,2193884747,2197706442,3267759525,2193884586,2197822828,2194016878,3271604527,2193885486,2193886358,2197847381,3267628362,2194017621,2197894485,2193884522,3267758701,2197822045,2193885483,2197850715,3267627669,2193885994,2197904170,2194016981,3267626202,2197822650,2194016855,2197853487,3267626279,2193884819,2197845683,2193884842,3267758773,2197828981,2193884342,2197867111,3267627566,2193886486,2197851798,2193886538,3267759530,2197837290,2194015597,2193884334,3271632989,2193885741,2197859607,2193885861,3267627858,2197847412,2194016986,2194015581,3271570747,2193884251,2193885739,2197887531,3267627685,2197855061,2193884850,2194016982,3271644470,2194016567,2193884247,2197830231,3267626283,2197727910,2194017685,2193884586,3271654060,2194016878,2193884462,2197830830,3267627606,2197863723,2193886506,2194017621,3271595437,2193884522,2194016877,2197837149,3267626283,2193885837,2197827157,2193885994,3271600982,2194016981,2193884378,2197842554,3267758679,2193884443,2197899799,2193884755,3271673513,2193884586,2194016949,2197852861,3267625654,2194016823,2197706030,2193886486,2194017867,2197698386,2194017706,2197927348,3267757421,2193883822,2197846589,2193885741,3267628309,2197835157,2193886034,2197867369,3267758810,2194015581,2197918299,2193884251,3267627563,2197838507,2193885845,2193886034,3271564970,2194016950,2197865819,2194015415,3267626071,2197845303,2193884459,2193884821,3271640725,2193884586,2197867189,2194016878,3267626158,2197850718,2193885782,2193886506,3271585450,2194017621,2193884522,2197891418,3267758429,2197861551,2193884315,2193885773,3271589165,2193885994,2194017109,2197833173,3267625690,2194016603,2197885271,2193884315,3271596623,2193884747,2193884841,2197842666,3267757749,2193883830,2197826222,2194016567,3271537814,2193886358,2194017867,2197714610,3267759530,2194015661,2197828461,2193883758,3267627310,2197826861,2193886357,2197855565,3267627850,2194017129,2197906778,2194015579,3267625565,2197826139,2193885483,2197858967,3267626645,2193885002,2197850970,2194016950,3267757371,2197832375,2193883735,2193884459,3271564587,2193884821,2197853869,2193884586,3267758773,2197837037,2193884334,2194016855,3271504974,2193886506,2197929364,2194017109,2193884522,2197846394,2194016605,2193884334,3271576219,2193885773,2193886501,2197887658,3267758933,2197853549,2193883866,2194016603,3271578807,2193884311,2193885771,2197834571,3267626665,2197867221,2194015669,2193883830,3271592286,2194016559,2193884311,2197702294,3267628362,2197868197,2194017641,2194015597,3271664309,2193883758,2193885486,2197843117,3267628181,2193886538,2197827402,2194017113,3271607661,2194015579,2193883741,2197846331,3267627307,2193885845,2197904149,2193884874,3267758805,2197885622,2194015419,2197852767,3267625559,2193884459,2197711530,2194017941,3267626666,2197830570,2194016949,2197861559,3267626158,2194016855,2197714221,2193886502,3267759509,2197837269,2193884522,2194016621,3271566685,2193884334,2197858895,2193885773,3267628325,2197843305,2194017109,2193883994,3271568058,2194016603,2197931163,2193884311,3267627595,2197850923,2193884837,2193884884,3271772853,2193883830,2194016567,2197824815,3267626135,2197722702,2193886538,2194017957,3271648937,2194015597,2193883830,2197895262,3267627310,2197863575,2193885845,2193886538,3271593386,2194017101,2194015595,2197832411,3267625565,2193885485,2197826859,2193885845,3271596877,2193884842,2194016981,2197841269,3267757243,2193883739,2197894231,2193884459,3271539348,2194017941,2193884842,2197850842,3267758517,2193884342,2197834414,2194016847,3267495206,2197892390,2194017621,2197923241,3267626346,2194016621,2197906589,2193884318,3267627597,2197835085,2193886501,2197863763,3267627860,2194017114,2197915994,2194016603,3267626139,2197834391,2193885771,2193885861,3271564965,2193884884,2197994203,2193883830,3267758391,2197841071,2193884311,2193884747,3271440202,2194017701,2197862069,2194015597,3267625646,2197846334,2193885486,2193886358,3271646485,2193886538,2194017701,2197894485,3267626346,2197846650,2194016861,2193885485,3271584427,2193885845,2193886026,2197834666,3267758805,2193884506,2197891258,2194016859,3271587127,2193884459,2193884819,2197903125,3267626666,2194016981,2197829045,2193884342,3271592542,2193885774,2193886502,2197843622,3267628370,2194017706,2197898858,2194015597,3267626158,2197830301,2193885773,2197847339,3267627813,2193886546,2197904724,2194017114,3267757405,2197828955,2193884315,2197845591,2193885771,2193885861,2197842789,2193884882,3267758810,2197833142,2194016567,2193884311,3271571095,2193884749,2197714602,2194017701,3267626410,2197838572,2194016942,2193885486,3271572782,2193886358,2197916997,2193886538,3267759445,2197906837,2193884522,2194016877,3271574877,2193884461,2193885845,2197896341,3267627850,2197912394,2194016981,2193884506,3271645754,2194016859,2193884459,2197899799,3267626643,2197853867,2193884842,2194016949,3271582965,2193884342,2194016855,2197701934,3267628310,2194017939,2197698386,2194017706,3271652778,2194015597,2193884334,2197903901,3267627565,2193886485,2197835173,2193886034,3271597418,2194016986,2194015581,2197906075,3267626075,2193885739,2197838635,2193885845,3267627858,2197891762,2194016982,2197910870,3267757367,2193884247,2197837399,2193884459,3267626645,2197829525,2193884586,2197858998,3267758701,2193884334,2197842542,2193885782,3267628330,2197839530,2194017621,2193884586,3271572330,2194016877,2197845181,2193884331,3267627661,2197839189,2193885994,2194017109,3271574997,2193884378,2194016605,2197824855,3267626139,2197842583,2193884747,2193884841,2197834666,2194015925,2193883834,2197826230,3267758391,2197710126,2193886486,2194017867,3271448274,2194017705,2194015669,2197828461,3267625646,2193885742,2197827117,2193886357,3271585109,2193886034,2194017129,2197833178,3267757405,2193883741,2197830235,2193885739,3271654027,2193885845,2193886026,2197904170,3267758805,2194015579,2197832375,2193883735,3271595311,2193884459,2193884821,2197841621,3267626410,2194016949,2197833069,2193884334,3267758679,2197763158,2193886506,2197913226,3267759445,2193884586,2197838554,2194016605,3267626158,2197834411,2193885773,2197851435,3267627817,2194017109,2197845365,2193883866,3267758429,2197837015,2193884315,2193885771,3271637579,2193884841,2197850841,2194015925,3267625654,2197903670,2194016567,2193884311,3271444118,2193886794,2197860006,2194017705,3267757485,2197906093,2193883822,2193885486,3271580845,2193886357,2193886538,2197896522,3267758953,2197845370,2194015579,2193883741,3271579995,2193885483,2193885845,2197835157,3267627850,2194017109,2197825237,2194015579,3271582327,2193883735,2193884459,2197707434,3267759765,2193884842,2197830570,2194016949,2197849277,2193884334,2194016855,2197706061,3267628326,2194017685,2197898837,2193884522,3267758509,2197824861,2193884334,2197842523,3267627597,2193886501,2197839273,2194017109,3267626346,2197826266,2194016605,2197845179,3267626139,2193885771,2197838667,2193884841,3267627732,2197965749,2193883830,2194016603,3271566647,2193884311,2197710422,2193886794,3267759781,2197903017,2194015669,2193883830,3271637166,2193885486,2197912717,2193886357,3267628362,2197908874,2194017129,2194015597,3271639643,2193883741,2193885485,2197826859,3267627669,2197847381,2193886026,2194017109,3271644501,2194015451,2193883739,2197895255,3267626283,2197850779,2193884821,2193884842,3271584490,2194016949,2193884342,2197834414,3267758679,2193884455,2197698342,2194017685,3271587509,2193884522,2194016685,2197837021,3267626158,2193885774,2197835085,2193886501,3271593305,2193886036,2194017642,2197907802,3267758427,2193884315,2197834395,2193885771,3271600935,2193884837,2193884884,2197973877,3267625654,2194016603,2197836983,2193884311,3267626571,2197698378,2194017957,2197849817,3267757485,2193883830,2197838190,2193885486,3267628182,2197835413,2193886538,2194017701,3271567189,2193884524,2197977787,2193883741,3267627309,2197839019,2193885845,2193886026,3271637834,2194017109,2197853533,2193884346,3267758683,2197837143,2193884459,2193885845,3271576469,2193884842,2194016981,2197825205,3267626166,2197842542,2194016855,2193884455,3271448230,2194017683,2193884586,2197830506,3267758445,2197861551,2193884334,2193885773,3271650573,2193886501,2193886546,2197839316,3267758954,2194016621,2197824859,2193884315,3271588439,2193885771,2193885989,2197904165,3267626708,2194016986,2197895350]},t={YEAR_CHEONGAN:6,YEAR_GANJI:0,MONTH_CHEONGAN:3,MONTH_GANJI:1,DAY_CHEONGAN:4,DAY_GANJI:2};return class{constructor(){this.cumulativeLunarYearDays=new Map,this.cumulativeSolarYearDays=new Map,this.solarCalendar={year:0,month:0,day:0},this.lunarCalendar={year:0,month:0,day:0,intercalation:!1};let e=new Date;this.setSolarDate(e.getFullYear(),e.getMonth()+1,e.getDate())}getLunarData(t){return e.KOREAN_LUNAR_DATA[t-e.KOREAN_LUNAR_BASE_YEAR]}getLunarIntercalationMonth(e){return e>>12&15}getLunarYearDays(e){return this.getLunarData(e)>>17&511}getLunarMonthDays(t,n,r){let i=this.getLunarData(t);return(r&&this.getLunarIntercalationMonth(i)===n?(i>>16&1)>0:(i>>12-n&1)>0)?e.LUNAR_BIG_MONTH_DAY:e.LUNAR_SMALL_MONTH_DAY}getLunarDaysBeforeBaseYear(e){return this.accumulateYearDays(e,this.cumulativeLunarYearDays,e=>this.getLunarYearDays(e))}getLunarDaysBeforeBaseMonth(t,n,r){let i=0;if(t>=e.KOREAN_LUNAR_BASE_YEAR&&n>0){for(let e=1;e<n+1;e++)i+=this.getLunarMonthDays(t,e,!1);if(r){let e=this.getLunarIntercalationMonth(this.getLunarData(t));e>0&&e<n+1&&(i+=this.getLunarMonthDays(t,e,!0))}}return i}getLunarAbsDays(e,t,n,r){let i=this.getLunarDaysBeforeBaseYear(e-1)+this.getLunarDaysBeforeBaseMonth(e,t-1,!0)+n;return r&&this.getLunarIntercalationMonth(this.getLunarData(e))===t&&(i+=this.getLunarMonthDays(e,t,!1)),i}isSolarIntercalationYear(e){return(e>>30&1)>0}getSolarYearDays(t){return this.isSolarIntercalationYear(this.getLunarData(t))?e.SOLAR_BIG_YEAR_DAY:e.SOLAR_SMALL_YEAR_DAY}getSolarMonthDays(t,n){return n===2&&this.isSolarIntercalationYear(this.getLunarData(t))?e.SOLAR_DAYS[12]:e.SOLAR_DAYS[n-1]}getSolarDaysBeforeBaseYear(e){return this.accumulateYearDays(e,this.cumulativeSolarYearDays,e=>this.getSolarYearDays(e))}accumulateYearDays(t,n,r){let i=n.get(t);if(i!==void 0)return i;let a=e.KOREAN_LUNAR_BASE_YEAR,o=n.get(t-1),s=0;if(o!==void 0&&t>a)s=o+r(t);else for(let e=a;e<t+1;e++)s+=r(e);return n.set(t,s),s}getSolarDaysBeforeBaseMonth(e,t){let n=0;for(let r=1;r<t+1;r++)n+=this.getSolarMonthDays(e,r);return n}getSolarAbsDays(t,n,r){return this.getSolarDaysBeforeBaseYear(t-1)+this.getSolarDaysBeforeBaseMonth(t,n-1)+r-e.SOLAR_LUNAR_DAY_DIFF}setSolarDateByLunarDate(e,t,n,r){let i=this.getLunarAbsDays(e,t,n,r),a=i<this.getSolarAbsDays(e+1,1,1)?e:e+1,o=0,s=0;for(let e=12;e>0;e--){let t=this.getSolarAbsDays(a,e,1);if(i>=t){o=e,s=i-t+1;break}}this.solarCalendar={year:a,month:o,day:s}}setLunarDateBySolarDate(e,t,n){let r=this.getSolarAbsDays(e,t,n),i=r>=this.getLunarAbsDays(e,1,1,!1)?e:e-1,a=0,o=0,s=!1;for(let e=12;e>0;e--)if(r>=this.getLunarAbsDays(i,e,1,!1)){a=e,this.getLunarIntercalationMonth(this.getLunarData(i))===e&&(s=r>=this.getLunarAbsDays(i,e,1,!0)),o=r-this.getLunarAbsDays(i,a,1,s)+1;break}this.lunarCalendar={year:i,month:a,day:o,intercalation:s}}checkValidDate(t,n,r,i,a){let o=!1;if(!Number.isInteger(r)||!Number.isInteger(i)||!Number.isInteger(a))return!1;let s=r*1e4+i*100+a;if((t?e.KOREAN_LUNAR_MIN_VALUE:e.KOREAN_SOLAR_MIN_VALUE)<=s&&(t?e.KOREAN_LUNAR_MAX_VALUE:e.KOREAN_SOLAR_MAX_VALUE)>=s&&i>0&&i<13&&a>0){if(t&&n&&this.getLunarIntercalationMonth(this.getLunarData(r))!==i)return!1;let e=t?this.getLunarMonthDays(r,i,n):this.getSolarMonthDays(r,i);if(!t&&r===1582&&i===10&&a>4&&a<15)return!1;a<=e&&(o=!0)}return o}setLunarDate(e,t,n,r){let i=!1;return this.checkValidDate(!0,r,e,t,n)&&(this.lunarCalendar={year:e,month:t,day:n,intercalation:r&&this.getLunarIntercalationMonth(this.getLunarData(e))===t},this.setSolarDateByLunarDate(e,t,n,r),i=!0),i}setSolarDate(e,t,n){let r=!1;return this.checkValidDate(!1,!1,e,t,n)&&(this.solarCalendar={year:e,month:t,day:n},this.setLunarDateBySolarDate(e,t,n),r=!0),r}computeGapJa(){let n=this.lunarCalendar,r=this.getLunarAbsDays(n.year,n.month,n.day,!!n.intercalation);if(r<=0)return{cheongan:{year:0,month:0,day:0},ganji:{year:0,month:0,day:0}};let i=e.KOREAN_LUNAR_BASE_YEAR,a=e.KOREAN_CHEONGAN.length,o=e.KOREAN_GANJI.length,s=n.month+12*(n.year-i);return{cheongan:{year:(n.year+t.YEAR_CHEONGAN-i)%a,month:(s+t.MONTH_CHEONGAN)%a,day:(r+t.DAY_CHEONGAN)%a},ganji:{year:(n.year+t.YEAR_GANJI-i)%o,month:(s+t.MONTH_GANJI)%o,day:(r+t.DAY_GANJI)%o}}}getGapJaIndex(){return this.computeGapJa()}getGapja(t){let n=this.getGapJaIndex(),r=t?e.CHINESE_CHEONGAN:e.KOREAN_CHEONGAN,i=t?e.CHINESE_GANJI:e.KOREAN_GANJI,a=t?e.CHINESE_GAPJA_UNIT:e.KOREAN_GAPJA_UNIT,o=t?`${e.INTERCALATION_STR[1]}${e.CHINESE_GAPJA_UNIT[1]}`:`${e.INTERCALATION_STR[0]}${e.KOREAN_GAPJA_UNIT[1]}`;return{year:`${r[n.cheongan.year]}${i[n.ganji.year]}${a[0]}`,month:`${r[n.cheongan.month]}${i[n.ganji.month]}${a[1]}`,day:`${r[n.cheongan.day]}${i[n.ganji.day]}${a[2]}`,intercalation:this.lunarCalendar.intercalation?o:``}}getKoreanGapja(){return this.getGapja()}getChineseGapja(){return this.getGapja(!0)}getLunarCalendar(){return{...this.lunarCalendar}}getSolarCalendar(){return{...this.solarCalendar}}}});
+//# sourceMappingURL=korean-lunar-calendar.min.js.map
+</script>
+  <script>
+    const ELEMENTS = [
+      ["木", "기획·학습", "새 포지션보다 학습과 시나리오 정리가 먼저입니다."],
+      ["火", "노출·실행", "실행 속도는 좋지만, FOMO인지 한 번 분리하세요."],
+      ["土", "정리·보존", "보유·기록·정리에 유리한 날입니다. 신규 베팅은 줄이세요."],
+      ["金", "절단·결정", "하나를 끊는 결정에는 맞지만, 충동 매수 신호는 아닙니다."],
+      ["水", "조사·유보", "조사와 유보는 우선입니다. 실행은 내일로 미루는 편이 맞습니다."],
+    ];
+    const ZODIACS = [
+      ["쥐", "작은 기회를 먼저 집으세요."], ["소", "오늘은 밀어붙이기보다 지키기가 맞습니다."],
+      ["호랑이", "한 번 크게 나가기보다 한 가지만 실행하세요."], ["토끼", "속도를 줄이고 주변을 먼저 보세요."],
+      ["용", "큰 그림은 좋지만, 오늘은 범위만 정하세요."], ["뱀", "서두르지 말고 한 번 더 확인하세요."],
+      ["말", "움직이고 싶은 날입니다. 방향만 고정하세요."], ["양", "같이 정하는 일이 혼자 결정보다 낫습니다."],
+      ["원숭이", "아이디어는 하나면 됩니다. 나머지는 접으세요."], ["닭", "이미 보인 것만 정리해도 충분합니다."],
+      ["개", "지킬 선이 있는 날입니다. 새 약속은 미루세요."], ["돼지", "여유 있게 두고, 급한 결정은 내일로 넘기세요."],
+    ];
+    const SIGNS = [
+      ["양", "3.21–4.19", "시작은 작게, 방향만 먼저 정하세요."], ["황소", "4.20–5.20", "익숙한 것을 지키는 쪽이 유리합니다."],
+      ["쌍둥이", "5.21–6.21", "정보는 둘만 비교하고 나머지는 접으세요."], ["게", "6.22–7.22", "가까운 사람의 반응을 한 번 더 들으세요."],
+      ["사자", "7.23–8.22", "드러내기보다 핵심 하나만 보여 주세요."], ["처녀", "8.23–9.22", "빠진 조건을 메우는 날이 맞습니다."],
+      ["천칭", "9.23–10.22", "양쪽을 적고, 오늘은 결정하지 마세요."], ["전갈", "10.23–11.22", "숨은 조건이 있는지 먼저 확인하세요."],
+      ["사수", "11.23–12.21", "범위 밖은 내일로 미루세요."], ["염소", "12.22–1.19", "순서를 정하면 반은 끝난 날입니다."],
+      ["물병", "1.20–2.18", "새 방식은 하나만 시험하세요."], ["물고기", "2.19–3.20", "느낌과 숫자를 분리해서 적으세요."],
+    ];
+    const STEPS = [["zodiac","띠"],["sign","별자리"],["brain","뇌 효율"],["birth","생년월일"],["blood","혈액형"],["mbti","MBTI"],["iq","IQ"],["worry","한 줄 고민"],["chart","시장 레이어"],["backtest","지난 선택"]];
+    const BLOODS = ["A","B","O","AB"];
+    const MBTI = ["INTJ","INTP","ENTJ","ENTP","INFJ","INFP","ENFJ","ENFP","ISTJ","ISFJ","ESTJ","ESFJ","ISTP","ISFP","ESTP","ESFP"];
+    const IQ = [
+      ["2, 6, 18, 54, ?", ["108","162","72","148"], 1],
+      ["관계가 다른 것은?", ["눈·보다","귀·듣다","코·맡다","손·생각"], 3],
+      ["1, 1, 2, 3, 5, 8, ?", ["11","12","13","15"], 2],
+    ];
+    const HOURS = ["자","축","인","묘","진","사","오","미","신","유","술","해"];
+    const RANGES = ["23:30–01:30","01:30–03:30","03:30–05:30","05:30–07:30","07:30–09:30","09:30–11:30","11:30–13:30","13:30–15:30","15:30–17:30","17:30–19:30","19:30–21:30","21:30–23:30"];
+    const STARTS = ["23:30","01:30","03:30","05:30","07:30","09:30","11:30","13:30","15:30","17:30","19:30","21:30"];
+    const DIRS = ["북","북동","동","남동","남","남서","서","북서"];
+    const ANIMALS = ["쥐","소","호랑이","토끼","용","뱀","말","양","원숭이","닭","개","돼지"];
+    const WEEK = ["일","월","화","수","목","금","토"];
+    const KEY = "onkyeol-html";
+
+    const blank = () => ({
+      opened: [], focus: "", ready: false, rotation: 0, spinning: false, result: null, modal: false, notice: "",
+      game: "idle", brain: null, early: false, worry: "", report: "", backtest: "",
+      zodiac: 0, zodiacOn: false, sign: 0, signOn: false, cal: "solar", birth: "", time: "",
+      ly: "", lm: "1", ld: "1", leap: false, blood: "", mbti: "", iqStep: 0, iqOk: 0, iqDone: false,
+      saju: false, hour: null, match: false, partner: "", taekilOpen: false, taekil: "", feng: false, dir: "",
+      days: [], shareCount: 0,
+    });
+    let state = blank();
+    let armed = 0;
+    let timer = 0;
+
+    function esc(s) { return String(s ?? "").replace(/[&<>"\']/g, (c) => ({ "&": "&"+"amp;", "<": "&"+"lt;", ">": "&"+"gt;", '"': "&"+"quot;", "'": "&"+"#39;" }[c])); }
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function todayISO() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+    function lived(iso) {
+      if (!iso) return null;
+      const born = new Date(`${iso}T00:00:00`);
+      if (Number.isNaN(born.getTime())) return null;
+      const t = new Date(); t.setHours(0,0,0,0);
+      const days = Math.round((t - born) / 86400000);
+      return days >= 0 ? days : null;
+    }
+    function gap(iso) {
+      if (!iso) return null;
+      const target = new Date(`${iso}T00:00:00`);
+      if (Number.isNaN(target.getTime())) return null;
+      const t = new Date(); t.setHours(0,0,0,0);
+      return Math.round((target - t) / 86400000);
+    }
+    function animalOf(iso) { const y = Number(String(iso).slice(0,4)); return Number.isFinite(y) && y > 0 ? ANIMALS[(y - 4) % 12] : ""; }
+    function hourIndex(value) {
+      if (!/^\d{2}:\d{2}$/.test(value)) return null;
+      const [h, m] = value.split(":").map(Number);
+      return Math.floor(((h * 60 + m - (23 * 60 + 30) + 1440) % 1440) / 120);
+    }
+    function solarFromLunar(y, m, d, leap) {
+      if (!window.KoreanLunarCalendar || !y || !m || !d) return "";
+      const cal = new KoreanLunarCalendar();
+      if (!cal.setLunarDate(Number(y), Number(m), Number(d), !!leap)) return "";
+      const s = cal.getSolarCalendar();
+      return `${s.year}-${pad(s.month)}-${pad(s.day)}`;
+    }
+    function band(score) { return score >= 800 ? "실행 가능" : score >= 600 ? "한 가지만" : "자중"; }
+    function guide(score) { return score >= 800 ? "오늘은 실행해도 됩니다." : score >= 600 ? "오늘은 한 가지만 진행하세요." : "자중입니다. 중요한 결정은 미루세요."; }
+    function mbtiLine(type) {
+      if (type[1] === "N" && type[2] === "T") return "기준을 한 줄로 적고 오늘은 그것만 진행하세요.";
+      if (type[1] === "N") return "사람에게 미칠 영향만 따로 적으세요.";
+      if (type[3] === "J") return "순서를 세 단계로 나누세요.";
+      return "오늘은 시험 하나만 하세요.";
+    }
+    function currentId() {
+      if (state.focus && state.opened.includes(state.focus)) return state.focus;
+      return [...state.opened].reverse()[0] || "";
+    }
+    function upcoming() { return STEPS.find(([id]) => !state.opened.includes(id)); }
+    function done(id) {
+      if (id === "zodiac") return state.zodiacOn;
+      if (id === "sign") return state.signOn;
+      if (id === "brain") return state.game === "done";
+      if (id === "birth") return lived(state.birth) !== null && hourIndex(state.time) !== null;
+      if (id === "blood") return state.blood !== "";
+      if (id === "mbti") return state.mbti !== "";
+      if (id === "iq") return state.iqDone;
+      if (id === "worry") return state.report !== "";
+      return true;
+    }
+    function note(text) { return `<p class="note">${esc(text)}</p>`; }
+    function picks(items, on, act) {
+      return `<div class="grid g3">${items.map((item, i) => `<button class="pick${on === i ? " on" : ""}" data-act="${act}" data-arg="${i}">${esc(item)}</button>`).join("")}</div>`;
+    }
+
+    function save() {
+      const today = todayISO();
+      const noteDay = state.result ? { date: today, element: state.result[0], act: state.result[1], reading: state.result[2], brain: state.brain, worry: state.worry, report: state.report } : null;
+      const days = [...state.days.filter((d) => d.date !== today), ...(noteDay ? [noteDay] : [])].slice(-30);
+      const copy = { ...state, days, modal: false, spinning: false, notice: "" };
+      localStorage.setItem(KEY, JSON.stringify(copy));
+    }
+    function load() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(KEY) || "null");
+        if (!raw) return;
+        state = { ...blank(), ...raw, modal: false, spinning: false };
+        const today = todayISO();
+        const todayNote = (state.days || []).find((d) => d.date === today);
+        state.days = (state.days || []).filter((d) => d.date !== today);
+        if (todayNote) {
+          state.result = [todayNote.element, todayNote.act, todayNote.reading];
+          state.ready = true;
+          state.brain = todayNote.brain;
+          state.worry = todayNote.worry || "";
+          state.report = todayNote.report || "";
+          if (todayNote.brain !== null && todayNote.brain !== undefined) state.game = "done";
+        }
+      } catch { state = blank(); }
+    }
+
+    function openStep(id) { if (!state.opened.includes(id)) state.opened.push(id); state.focus = id; state.notice = ""; }
+    function restart() {
+      const keep = { ...state };
+      state.opened = []; state.focus = ""; state.ready = false; state.result = null; state.modal = false;
+      state.game = "idle"; state.brain = null; state.early = false; state.worry = ""; state.report = "";
+      state.backtest = ""; state.taekil = ""; state.taekilOpen = false; state.notice = "";
+      state.zodiac = keep.zodiac; state.zodiacOn = keep.zodiacOn; state.sign = keep.sign; state.signOn = keep.signOn;
+      state.cal = keep.cal; state.birth = keep.birth; state.time = keep.time; state.ly = keep.ly; state.lm = keep.lm;
+      state.ld = keep.ld; state.leap = keep.leap; state.blood = keep.blood; state.mbti = keep.mbti;
+      state.iqStep = keep.iqStep; state.iqOk = keep.iqOk; state.iqDone = keep.iqDone; state.hour = keep.hour;
+      state.partner = keep.partner; state.saju = keep.saju; state.match = keep.match; state.days = keep.days; state.shareCount = keep.shareCount;
+    }
+    function clearAll() { localStorage.removeItem(KEY); state = blank(); }
+
+    function spin() {
+      if (state.spinning) return;
+      const pick = Math.floor(Math.random() * ELEMENTS.length);
+      const center = pick * 72 + 36;
+      state.spinning = true; state.modal = false;
+      state.rotation += 1440 + ((360 - center + 360) % 360);
+      paint();
+      setTimeout(() => {
+        state.result = ELEMENTS[pick];
+        state.modal = true; state.spinning = false; state.ready = false;
+        paint();
+      }, 1450);
+    }
+    function tapGame() {
+      if (state.game === "idle") { state.early = false; state.game = "wait"; paint();
+        clearTimeout(timer);
+        timer = setTimeout(() => { armed = performance.now(); state.game = "go"; paint(); }, 700 + Math.random() * 1600);
+        return;
+      }
+      if (state.game === "wait") { state.early = true; state.game = "idle"; clearTimeout(timer); paint(); return; }
+      if (state.game !== "go") return;
+      const ms = Math.round(performance.now() - armed);
+      state.brain = Math.max(0, Math.min(1000, Math.round(1000 - (ms - 200) * 2)));
+      state.game = "done"; state.early = false; paint();
+    }
+    function syncLunar() { state.birth = solarFromLunar(state.ly, state.lm, state.ld, state.leap); }
+
+    function stepHead(id, title) {
+      const n = STEPS.findIndex((s) => s[0] === id) + 1;
+      return `<section class="step"><p class="gold" style="font-size:12px">${n} / ${STEPS.length} · 필수</p><h2 style="margin:8px 0 0">${title}</h2>`;
+    }
+
+    function viewStep() {
+      const id = currentId();
+      if (id === "zodiac") return stepHead(id, "띠") + `<p class="muted">열두 띠 중 오늘 기준 하나를 고르세요.</p>` + picks(ZODIACS.map((z) => z[0] + "띠"), state.zodiacOn ? state.zodiac : -1, "zodiac") + (state.zodiacOn ? note(`${ZODIACS[state.zodiac][0]}띠. ${ZODIACS[state.zodiac][1]}`) : "") + `</section>`;
+      if (id === "sign") return stepHead(id, "별자리") + `<p class="muted">태어난 날짜로 고르세요.</p><div class="grid g3">${SIGNS.map((s, i) => `<button class="pick tall${state.signOn && state.sign === i ? " on" : ""}" data-act="sign" data-arg="${i}"><span>${esc(s[0])}자리</span><span style="font-size:11px;opacity:.75">${esc(s[1])}</span></button>`).join("")}</div>${state.signOn ? note(`${SIGNS[state.sign][0]}자리 · ${SIGNS[state.sign][1]}. ${SIGNS[state.sign][2]}`) : ""}</section>`;
+      if (id === "brain") {
+        const label = state.game === "go" ? "반응" : state.game === "wait" ? "아직" : state.game === "done" ? "측정 완료" : "측정 시작";
+        return stepHead(id, "뇌 효율") + `<p style="font-weight:600">${state.game === "go" ? "지금 누르세요" : state.game === "wait" ? "기다리세요" : "뇌 효율 · 1000점"}</p><button class="btn gold" data-act="brain" ${state.game === "done" ? "disabled" : ""}>${label}</button>${state.early ? `<p class="muted">신호 전에 눌러 무효입니다. 다시 재세요.</p>` : ""}${state.brain !== null ? note(`${state.brain} / 1000 · ${band(state.brain)}. ${guide(state.brain)}`) : ""}</section>`;
+      }
+      if (id === "birth") {
+        const days = lived(state.birth);
+        const hi = hourIndex(state.time);
+        const solar = state.cal === "solar"
+          ? `<label class="field">날짜<input id="birth" data-field="birth" type="date" max="${todayISO()}" value="${esc(state.birth)}"></label>`
+          : `<div class="grid g3"><label class="field">년<input id="ly" data-field="ly" inputmode="numeric" value="${esc(state.ly)}" placeholder="1990"></label><label class="field">월<select id="lm" data-field="lm">${Array.from({length:12}, (_,i)=>`<option value="${i+1}" ${state.lm==i+1?"selected":""}>${i+1}월</option>`).join("")}</select></label><label class="field">일<select id="ld" data-field="ld">${Array.from({length:30}, (_,i)=>`<option value="${i+1}" ${state.ld==i+1?"selected":""}>${i+1}일</option>`).join("")}</select></label></div><button class="btn${state.leap ? " gold" : ""}" style="margin-top:8px" data-act="leap">윤달</button>`;
+        let extra = "";
+        if (days !== null && hi !== null) {
+          const when = new Date(`${state.birth}T00:00:00`);
+          const head = state.cal === "lunar" ? `음력 ${state.ly}.${state.lm}.${state.ld}${state.leap ? " 윤달" : ""} → 양력 ${state.birth}` : `양력 ${state.birth}`;
+          extra += note(`${head} · ${state.time} · ${HOURS[hi]}시 ${RANGES[hi]}. ${animalOf(state.birth)}띠 · ${WEEK[when.getDay()]}요일 · 오늘까지 ${days.toLocaleString("ko-KR")}일`);
+        }
+        if (state.cal === "lunar" && String(state.ly).length === 4 && !state.birth) extra += `<p class="muted">없는 음력 날짜입니다. 월·일과 윤달을 다시 보세요.</p>`;
+        if (state.birth && days === null) extra += `<p class="muted">오늘 이전 날짜만 계산됩니다.</p>`;
+        if (days !== null) {
+          extra += state.saju ? `<div class="opt"><p class="muted" style="font-size:12px">선택 · 건너뛰어도 됩니다</p><p style="font-weight:600">사주</p><p class="muted">시진은 태어난 시간과 같이 움직입니다.</p><div class="grid g4" style="margin-top:8px">${HOURS.map((name,i)=>`<button class="pick${state.hour===i?" on":""}" data-act="hour" data-arg="${i}">${name}시</button>`).join("")}</div>${state.hour!==null?note(`${HOURS[state.hour]}시 · ${RANGES[state.hour]}. 이 시간이 시주 자리입니다.`):""}${state.hour!==null?(state.match?`<div class="opt"><p style="font-weight:600">궁합</p><label class="field">상대 띠 또는 이름<input id="partner" data-field="partner" value="${esc(state.partner)}" placeholder="예: 용띠"></label>${state.partner.trim()?note(`${state.partner.trim()}와 오늘 비교만 남겼습니다. 점수 궁합은 아닙니다.`):""}</div>`:`<button class="btn dash" style="margin-top:12px" data-act="match">선택 · 궁합</button>`):""}</div>` : `<button class="btn dash" style="margin-top:16px" data-act="saju">선택 · 사주</button>`;
+        }
+        return stepHead(id, "생년월일") + `<div class="grid g2"><button class="pick seg${state.cal==="solar"?" on":""}" data-act="cal" data-arg="solar">양력</button><button class="pick seg${state.cal==="lunar"?" on":""}" data-act="cal" data-arg="lunar">음력</button></div>${solar}<label class="field">태어난 시간<input id="time" data-field="time" type="time" value="${esc(state.time)}"></label>${extra}</section>`;
+      }
+      if (id === "blood") return stepHead(id, "혈액형") + `<div class="grid g4">${BLOODS.map((b)=>`<button class="pick${state.blood===b?" on":""}" data-act="blood" data-arg="${b}">${b}</button>`).join("")}</div>${state.blood?note(`${state.blood}형으로 기록했습니다. 오늘 점수는 뇌 효율만 바꿉니다.`):""}</section>`;
+      if (id === "mbti") return stepHead(id, "MBTI") + `<div class="grid g4">${MBTI.map((t)=>`<button class="pick${state.mbti===t?" on":""}" data-act="mbti" data-arg="${t}">${t}</button>`).join("")}</div>${state.mbti?note(`${state.mbti}. ${mbtiLine(state.mbti)}`):""}</section>`;
+      if (id === "iq") {
+        if (state.iqDone) return stepHead(id, "IQ") + note(`3문항 중 ${state.iqOk}. 패턴이 또렷합니다. 임상 검사가 아닙니다.`) + `</section>`;
+        const item = IQ[state.iqStep];
+        return stepHead(id, "IQ") + `<p class="muted">문항 ${state.iqStep + 1} / 3. 임상 검사가 아닙니다.</p><p style="font-weight:600">${esc(item[0])}</p><div class="grid g2">${item[1].map((c,i)=>`<button class="pick" data-act="iq" data-arg="${i}">${esc(c)}</button>`).join("")}</div></section>`;
+      }
+      if (id === "worry") {
+        let block = `<label class="field">한 줄 고민<input id="worry" data-field="worry" value="${esc(state.worry)}" placeholder="이번 주 안에 결정할 일"></label>`;
+        if (!state.report) block += `<button class="btn gold" style="margin-top:12px" data-act="diagnose">고민 진단</button>`;
+        else {
+          block += note(state.report);
+          block += state.taekilOpen ? `<div class="opt"><p style="font-weight:600">택일</p><label class="field">후보 날짜<input id="taekil" data-field="taekil" type="date" value="${esc(state.taekil)}"></label>${state.taekil && gap(state.taekil)!==null ? note(`${state.taekil} · ${WEEK[new Date(state.taekil+"T00:00:00").getDay()]}요일 · 오늘 기준 ${gap(state.taekil).toLocaleString("ko-KR")}일. 후보 날짜만 잡아 두었습니다.`) : ""}</div>` : `<button class="btn dash" style="margin-top:16px" data-act="taekil">선택 · 택일</button>`;
+        }
+        return stepHead(id, "한 줄 고민") + block + `</section>`;
+      }
+      if (id === "chart") {
+        const bars = [[1,42],[2,68],[3,55],[4,80],[5,61],[6,74]].map(([l,h]) => `<div class="bar"><div style="flex:1;width:100%;display:flex;align-items:flex-end"><i style="height:${h}%"></i></div><span>${l}</span></div>`).join("");
+        const feng = state.feng ? `<div class="opt"><p style="font-weight:600">풍수</p><div class="grid g4">${DIRS.map((d)=>`<button class="pick${state.dir===d?" on":""}" data-act="dir" data-arg="${d}">${d}</button>`).join("")}</div>${state.dir?note(`${state.dir}쪽을 오늘 확인할 방향으로 잡았습니다.`):""}</div>` : `<button class="btn dash" style="margin-top:16px" data-act="feng">선택 · 풍수</button>`;
+        return stepHead(id, "시장 레이어") + `<p class="muted">최근 6구간 예시입니다. 매수 신호가 아닙니다.</p><div class="bars">${bars}</div><p>예시 2,614</p>${feng}</section>`;
+      }
+      if (id === "backtest") {
+        const lines = state.backtest ? state.backtest.split("\n").map(note).join("") : "";
+        return stepHead(id, "지난 선택") + `<button class="btn" data-act="backtest">지난 선택 보기</button>${lines}</section>`;
+      }
+      return "";
+    }
+
+    function view() {
+      const next = upcoming();
+      const cur = currentId();
+      let html = `<header><p class="word gold">온결</p></header>`;
+      if (!state.opened.length) {
+        html += `<h1>오늘의 룰렛</h1><p class="muted">다섯 기운 중 오늘 하나를 먼저 보세요.</p><div class="card"><div class="pointer"></div><div class="wheel-wrap"><div class="wheel" style="transform:rotate(${state.rotation}deg)">${ELEMENTS.map((el,i)=>`<span style="transform:translate(-50%,-50%) rotate(${i*72+36}deg) translateY(-78px) rotate(-${i*72+36}deg)">${el[0]}</span>`).join("")}</div><div class="hub">오늘의 룰렛</div></div><button class="btn gold" data-act="spin" ${state.spinning?"disabled":""}>${state.spinning?"돌아가는 중":"룰렛 돌리기"}</button></div>`;
+        if (state.zodiacOn || state.signOn || state.birth || state.blood || state.mbti || state.iqDone) html += `<button class="link dim" data-act="clear">기록 지우기</button>`;
+      } else if (state.result) {
+        html += `<section class="card" style="margin-top:32px"><p class="gold" style="font-size:12px">룰렛 결과</p><p>${esc(state.result[0])} 강세 · ${esc(state.result[1])}</p></section>`;
+      }
+      if (state.opened.length) {
+        const past = STEPS.filter(([id]) => state.opened.includes(id) && id !== cur);
+        html += `<div style="margin-top:24px;display:flex;justify-content:space-between"><p class="muted" style="font-size:12px">지난 단계</p><button class="link" data-act="restart">다시 시작</button></div><div class="row">${past.map(([id,title])=>`<button class="pill" data-act="jump" data-arg="${id}">${title}</button>`).join("")}</div><button class="link dim" data-act="clear">기록 지우기</button>`;
+      }
+      if (state.days.length) html += `<section class="card" style="margin-top:16px"><p class="muted" style="font-size:12px">지난 오늘</p>${[...state.days].reverse().slice(0,5).map((d)=>`<p style="font-size:14px">${esc(d.date)} · ${esc(d.element)} 강세${d.worry?` · ${esc(d.worry)}`:""}</p>`).join("")}</section>`;
+      html += viewStep();
+      if (state.ready && next && !state.opened.length) html += `<button class="btn gold" style="margin-top:20px" data-act="next">다음 · ${next[1]}</button>`;
+      if (state.ready && next && state.opened.length) {
+        const ok = cur && done(cur);
+        html += `<button class="btn${ok?" gold":""}" style="margin-top:20px" data-act="next">${ok?`다음 · ${next[1]}`:`건너뛰기 · ${next[1]}`}</button>`;
+      }
+      if (state.report) html += `<button class="btn" style="margin-top:16px" data-act="share">결과 공유</button>`;
+      if (state.zodiacOn || state.signOn || state.birth || state.blood || state.mbti || state.iqDone || state.days.length || state.result) html += `<button class="btn" style="margin-top:12px" data-act="export">기록 파일로 남기기</button><label class="btn" style="margin-top:12px;display:grid;place-items:center">기록 가져오기<input id="import" type="file" accept="application/json" hidden></label>`;
+      if (state.shareCount >= 3) html += `<button class="btn" style="margin-top:12px" data-act="invite">친구 초대</button>`;
+      if (state.notice) html += `<p class="gold" style="font-size:14px">${esc(state.notice)}</p>`;
+      if (state.opened.includes("worry")) html += `<p class="muted" style="margin-top:24px;font-size:12px">데이터 분석과 자기성찰 도구입니다. 금융·법률의 최종 책임은 사용자에게 있습니다.</p>`;
+      if (state.modal && state.result) html += `<div class="modal" role="dialog"><div class="sheet"><p class="gold" style="font-size:12px">오늘의 결과</p><h2 style="margin:8px 0">${esc(state.result[0])} 강세</h2><p class="muted">${esc(state.result[2])}</p><p>${esc(state.result[1])}</p><button class="btn" data-act="close">닫기</button></div></div>`;
+      return html;
+    }
+
+    function paint() {
+      const active = document.activeElement;
+      const id = active && active.id;
+      const pos = active && active.selectionStart;
+      document.getElementById("app").innerHTML = view();
+      if (id) {
+        const el = document.getElementById(id);
+        if (el) { el.focus(); if (typeof pos === "number" && el.setSelectionRange) el.setSelectionRange(pos, pos); }
+      }
+    }
+
+    async function shareResult() {
+      if (!state.result || !state.report) return;
+      const text = [`온결 ${state.result[0]} 강세 · ${state.result[1]}`, state.brain === null ? "" : `뇌 효율 ${state.brain} / 1000`, state.worry.trim(), state.report].filter(Boolean).join("\n");
+      try {
+        if (navigator.share) await navigator.share({ title: "온결", text });
+        else await navigator.clipboard.writeText(text);
+        state.shareCount += 1;
+        state.notice = "결과만 공유했습니다. 생일과 성향은 빠집니다.";
+      } catch { state.notice = "공유를 취소했습니다."; }
+      save(); paint();
+    }
+
+    document.getElementById("app").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-act]");
+      if (!button) return;
+      const act = button.dataset.act;
+      const arg = button.dataset.arg;
+      if (act === "spin") spin();
+      else if (act === "close") { state.modal = false; state.ready = true; save(); paint(); }
+      else if (act === "next") { const n = upcoming(); if (n) { openStep(n[0]); save(); paint(); } }
+      else if (act === "jump") { state.focus = arg; paint(); }
+      else if (act === "restart") { restart(); save(); paint(); }
+      else if (act === "clear") { clearAll(); paint(); }
+      else if (act === "zodiac") { state.zodiac = Number(arg); state.zodiacOn = true; save(); paint(); }
+      else if (act === "sign") { state.sign = Number(arg); state.signOn = true; save(); paint(); }
+      else if (act === "brain") tapGame();
+      else if (act === "cal") { state.cal = arg; if (arg === "lunar") syncLunar(); save(); paint(); }
+      else if (act === "leap") { state.leap = !state.leap; syncLunar(); save(); paint(); }
+      else if (act === "saju") { state.saju = true; paint(); }
+      else if (act === "hour") { state.hour = Number(arg); state.time = STARTS[state.hour]; save(); paint(); }
+      else if (act === "match") { state.match = true; paint(); }
+      else if (act === "blood") { state.blood = arg; save(); paint(); }
+      else if (act === "mbti") { state.mbti = arg; save(); paint(); }
+      else if (act === "iq") {
+        if (Number(arg) === IQ[state.iqStep][2]) state.iqOk += 1;
+        if (state.iqStep + 1 >= IQ.length) state.iqDone = true; else state.iqStep += 1;
+        save(); paint();
+      }
+      else if (act === "diagnose") {
+        const field = document.getElementById("worry");
+        if (field) state.worry = field.value;
+        if (!state.worry.trim()) return;
+        state.report = `${state.worry.trim()}. ${state.brain === null ? "사실과 해석을 나누고, 한 가지만 진행하세요." : guide(state.brain)}`;
+        save(); paint();
+      }
+      else if (act === "taekil") { state.taekilOpen = true; paint(); }
+      else if (act === "feng") { state.feng = true; paint(); }
+      else if (act === "dir") { state.dir = arg; save(); paint(); }
+      else if (act === "backtest") {
+        state.backtest = state.brain !== null && state.brain < 600
+          ? "자중일 다음 날의 선택이 남았습니다.\n바로 실행한 날은 범위가 컸습니다.\n한 가지만 고른 날이 가장 짧았습니다."
+          : "한 가지만 고른 날이 남았습니다.\n여러 개를 같은 날 연 날은 흐렸습니다.\n자중 다음 날이 실행에 맞았습니다.";
+        save(); paint();
+      }
+      else if (act === "share") shareResult();
+      else if (act === "invite") {
+        const text = "온결에서 오늘 하나를 골라 보세요.";
+        try {
+          if (navigator.share) await navigator.share({ title: "온결", text, url: location.href });
+          else await navigator.clipboard.writeText(`${text} ${location.href}`);
+          state.notice = "초대 링크를 준비했습니다. 친구는 룰렛부터 시작합니다.";
+        } catch { state.notice = "초대를 취소했습니다."; }
+        paint();
+      }
+      else if (act === "export") {
+        const blob = new Blob([localStorage.getItem(KEY) || "{}"], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "onkyeol.json";
+        a.click();
+        state.notice = "기록 파일을 저장했습니다. 다른 기기에서는 가져오기로 여세요.";
+        paint();
+      }
+    });
+    document.getElementById("app").addEventListener("input", (event) => {
+      const input = event.target;
+      if (!input.dataset || !input.dataset.field) return;
+      state[input.dataset.field] = input.value;
+      if (input.dataset.field === "time") state.hour = hourIndex(input.value);
+      if (["ly", "lm", "ld"].includes(input.dataset.field)) syncLunar();
+      save();
+    });
+    document.getElementById("app").addEventListener("change", (event) => {
+      const input = event.target;
+      if (input.id === "import" && input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try { localStorage.setItem(KEY, String(reader.result)); load(); state.notice = "기록 파일을 가져왔습니다."; }
+          catch { state.notice = "파일을 읽지 못했습니다."; }
+          paint();
+        };
+        reader.readAsText(input.files[0]);
+        return;
+      }
+      if (!input.dataset || !input.dataset.field) return;
+      state[input.dataset.field] = input.value;
+      if (input.dataset.field === "time") state.hour = hourIndex(input.value);
+      if (["ly","lm","ld"].includes(input.dataset.field)) syncLunar();
+      save();
+      if (input.dataset.field !== "worry" && input.dataset.field !== "partner") paint();
+    });
+
+    load();
+    paint();
+  </script>
+</body>
+</html>
