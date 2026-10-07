@@ -105,7 +105,7 @@
       zodiac: 0, zodiacOn: false, sign: 0, signOn: false, cal: "solar", birth: "", time: "",
       ly: "", lm: "1", ld: "1", leap: false, blood: "", mbti: "", iqStep: 0, iqOk: 0, iqDone: false,
       saju: false, hour: null, match: false, partner: "", taekilOpen: false, taekil: "", feng: false, dir: "",
-      days: [], shareCount: 0,
+      days: [], shareCount: 0, tucked: false,
     });
     let state = blank();
     let armed = 0;
@@ -151,6 +151,7 @@
       return "오늘은 시험 하나만 하세요.";
     }
     function currentId() {
+      if (state.tucked) return "";
       if (state.focus && state.opened.includes(state.focus)) return state.focus;
       return [...state.opened].reverse()[0] || "";
     }
@@ -197,10 +198,10 @@
       } catch { state = blank(); }
     }
 
-    function openStep(id) { if (!state.opened.includes(id)) state.opened.push(id); state.focus = id; state.notice = ""; }
+    function openStep(id) { if (!state.opened.includes(id)) state.opened.push(id); state.focus = id; state.tucked = false; state.notice = ""; }
     function restart() {
       const keep = { ...state };
-      state.opened = []; state.focus = ""; state.ready = false; state.result = null; state.modal = false;
+      state.opened = []; state.focus = ""; state.tucked = false; state.ready = false; state.result = null; state.modal = false;
       state.game = "idle"; state.brain = null; state.early = false; state.worry = ""; state.report = "";
       state.backtest = ""; state.taekil = ""; state.taekilOpen = false; state.notice = "";
       state.zodiac = keep.zodiac; state.zodiacOn = keep.zodiacOn; state.sign = keep.sign; state.signOn = keep.signOn;
@@ -313,7 +314,7 @@
         html += `<div style="margin-top:24px;display:flex;justify-content:space-between"><p class="muted" style="font-size:12px">지난 단계</p><button class="link" data-act="restart">다시 시작</button></div><div class="row">${past.map(([id,title])=>`<button class="pill" data-act="jump" data-arg="${id}">${title}</button>`).join("")}</div><button class="link dim" data-act="clear">기록 지우기</button>`;
       }
       if (state.days.length) html += `<section class="card" style="margin-top:16px"><p class="muted" style="font-size:12px">지난 오늘</p>${[...state.days].reverse().slice(0,5).map((d)=>`<p style="font-size:14px">${esc(d.date)} · ${esc(d.element)} 강세${d.worry?` · ${esc(d.worry)}`:""}</p>`).join("")}</section>`;
-      html += viewStep();
+      html += viewStep().replace("</section>", (currentId() && done(currentId()) ? `<button class="btn" style="margin-top:12px" data-act="dismiss">닫기</button>` : "") + "</section>");
       if (state.ready && next && !state.opened.length) html += `<button class="btn gold" style="margin-top:20px" data-act="next">다음 · ${next[1]}</button>`;
       if (state.ready && next && state.opened.length) {
         const ok = cur && done(cur);
@@ -359,7 +360,8 @@
       if (act === "spin") spin();
       else if (act === "close") { state.modal = false; state.ready = true; save(); paint(); }
       else if (act === "next") { const n = upcoming(); if (n) { openStep(n[0]); save(); paint(); } }
-      else if (act === "jump") { state.focus = arg; paint(); }
+      else if (act === "jump") { state.focus = arg; state.tucked = false; paint(); }
+      else if (act === "dismiss") { state.tucked = true; paint(); }
       else if (act === "restart") { restart(); save(); paint(); }
       else if (act === "clear") { clearAll(); paint(); }
       else if (act === "zodiac") { state.zodiac = Number(arg); state.zodiacOn = true; save(); paint(); }
