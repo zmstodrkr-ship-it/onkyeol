@@ -519,13 +519,13 @@
       const next = upcoming();
       const cur = currentId();
       let html = `<header><p class="word gold">온결</p>${state.opened.length ? `<button class="link" data-act="restart">다시 시작</button>` : ""}</header>`;
+      html += `<nav style="margin-top:20px"><p class="muted" style="font-size:12px">메뉴</p><div class="grid g3" style="margin-top:8px">${[["saju","사주팔자"],["match","궁합"],["taekil","택일"]].map(([id, title]) => `<button class="pick${cur === id ? " on" : ""}" data-act="menu" data-arg="${id}">${title}</button>`).join("")}</div></nav>`;
       if (!state.opened.length) {
         html += `<h1>오늘의 룰렛</h1><p class="muted">다섯 기운 중 오늘 하나를 먼저 보세요.</p><div class="card"><div class="pointer"></div><div class="wheel-wrap"><div class="wheel" style="transform:rotate(${state.rotation}deg)">${ELEMENTS.map((el,i)=>`<span style="transform:translate(-50%,-50%) rotate(${i*72+36}deg) translateY(-78px) rotate(-${i*72+36}deg)">${el[0]}</span>`).join("")}</div><div class="hub">오늘의 룰렛</div></div><button class="btn gold" data-act="spin" ${state.spinning?"disabled":""}>${state.spinning?"돌아가는 중":"룰렛 돌리기"}</button></div>`;
         if (state.zodiacOn || state.signOn || state.birth || state.blood || state.mbti || state.iqDone) html += `<button class="link dim" data-act="clear">기록 지우기</button>`;
       } else if (state.result) {
         html += `<section class="card" style="margin-top:32px"><p class="gold" style="font-size:12px">룰렛 결과</p><p>${esc(state.result[0])} 강세 · ${esc(state.result[1])}</p></section>`;
       }
-      if (state.ready) html += `<p class="muted" style="margin-top:20px;font-size:12px">메뉴</p><div class="row">${[["saju","사주팔자"],["match","궁합"],["taekil","택일"]].map(([id, title]) => `<button class="pill${cur === id ? " on" : ""}" data-act="menu" data-arg="${id}">${title}</button>`).join("")}</div>`;
       if (state.days.length) html += `<section class="card" style="margin-top:16px"><p class="muted" style="font-size:12px">지난 오늘</p>${[...state.days].reverse().slice(0,5).map((d)=>`<p style="font-size:14px">${esc(d.date)} · ${esc(d.element)} 강세${d.worry?` · ${esc(d.worry)}`:""}</p>`).join("")}</section>`;
       html += stack();
       html += viewStep().replace("</section>", (currentId() && done(currentId()) ? `<button class="btn" style="margin-top:12px" data-act="dismiss">닫기</button>` : "") + "</section>");
